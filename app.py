@@ -1,16 +1,14 @@
-import sys
-import os
-from pathlib import Path
-from PySide6.QtWidgets import (QApplication, QMainWindow, QLabel, 
-                              QVBoxLayout, QWidget, QPushButton, QHBoxLayout,
-                              QFileDialog)
-from PySide6.QtCore import QTimer, Qt, QSize
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QFileDialog
 from PySide6.QtGui import QPixmap, QImage, QPalette, QColor, QKeyEvent
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
-import random  # Add this import at the top
-from PIL import Image, ExifTags
+from PySide6.QtCore import QTimer, Qt, QSize
 from PIL.ImageQt import ImageQt
+from PIL import Image, ExifTags
+from pathlib import Path
+import random
+import os
+import sys
 
 class SlideshowApp(QMainWindow):
     def __init__(self):
@@ -65,6 +63,22 @@ class SlideshowApp(QMainWindow):
         self.media_player.setAudioOutput(self.audio_output)
         self.audio_output.setVolume(1.0)
 
+        self.history = []  # Store history of shown items
+        self.history_position = -1  # Current position in history
+        self.future_queue = []  # Store items that were shown after current position
+
+        # Add video finished signal handler
+        self.media_player.mediaStatusChanged.connect(self.handle_media_status)
+
+        # Add cursor hide timer
+        self.cursor_timer = QTimer()
+        self.cursor_timer.timeout.connect(self.hide_cursor)
+        self.cursor_timer.setSingleShot(True)
+        
+        # Track cursor visibility
+        self.cursor_visible = True
+        self.cursor_timer.start(2000)
+
     def select_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder_path:
@@ -75,6 +89,9 @@ class SlideshowApp(QMainWindow):
                 self.image_label.show()
                 random.shuffle(self.files)
                 self.current_index = -1
+                self.history = []  # Reset history
+                self.history_position = -1  # Reset history position
+                self.future_queue = []  # Reset future queue
                 self.next_item()
             else:
                 self.prompt_label.setText("No supported media files found\nPress 'O' to select another folder")
@@ -125,7 +142,8 @@ class SlideshowApp(QMainWindow):
                                     Qt.KeepAspectRatio, 
                                     Qt.SmoothTransformation)
         self.image_label.setPixmap(scaled_pixmap)
-        self.timer.start(self.display_duration)
+        if self.is_playing:
+            self.timer.start(self.display_duration)
 
     def show_video(self, file_path):
         self.image_label.hide()
@@ -135,23 +153,40 @@ class SlideshowApp(QMainWindow):
         self.media_player.setSource(QUrl.fromLocalFile(str(file_path)))
         self.media_player.play()
         
-        # Start the timer for videos as well
-        self.timer.start(self.display_duration)
+        # Don't start the timer for videos
+        self.timer.stop()
 
     def next_item(self):
         if not self.files:
             return
             
-        # Instead of cycling through, pick a random index
-        self.current_index = random.randint(0, len(self.files) - 1)
+        # If we have items in future_queue (after going back), use those
+        if self.future_queue:
+            self.current_index = self.future_queue.pop(0)
+            self.history.append(self.current_index)
+            self.history_position = len(self.history) - 1
+        else:
+            # Pick a random index that's different from the current one
+            new_index = self.current_index
+            while new_index == self.current_index and len(self.files) > 1:
+                new_index = random.randint(0, len(self.files) - 1)
+            
+            self.current_index = new_index
+            self.history.append(self.current_index)
+            self.history_position = len(self.history) - 1
+            
         self.show_current_item()
 
     def previous_item(self):
-        if not self.files:
+        if not self.files or self.history_position <= 0:
             return
             
-        # Also pick a random index for previous
-        self.current_index = random.randint(0, len(self.files) - 1)
+        # Store current item in future queue before going back
+        if self.history_position == len(self.history) - 1:
+            self.future_queue.insert(0, self.history[self.history_position])
+            
+        self.history_position -= 1
+        self.current_index = self.history[self.history_position]
         self.show_current_item()
 
     def show_current_item(self):
@@ -219,6 +254,39 @@ class SlideshowApp(QMainWindow):
         elif event.key() == Qt.Key_O:
             self.select_folder()
         event.accept()
+
+    def handle_media_status(self, status):
+        # Import the status enum
+        from PySide6.QtMultimedia import QMediaPlayer
+        
+        # When video reaches the end, move to next item
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            self.next_item()
+
+    def mouseMoveEvent(self, event):
+        """Show cursor when mouse moves and restart the timer"""
+        if not self.cursor_visible:
+            self.setCursor(Qt.ArrowCursor)
+            self.cursor_visible = True
+        
+        self.cursor_timer.start(2000)
+        super().mouseMoveEvent(event)
+
+    def hide_cursor(self):
+        """Hide the cursor after timer expires"""
+        self.setCursor(Qt.BlankCursor)
+        self.cursor_visible = False
+
+    def leaveEvent(self, event):
+        """Show cursor when leaving window"""
+        self.setCursor(Qt.ArrowCursor)
+        self.cursor_visible = True
+        super().leaveEvent(event)
+
+    def enterEvent(self, event):
+        """Start timer when entering window"""
+        self.cursor_timer.start(2000)
+        super().enterEvent(event)
 
 def main():
     app = QApplication(sys.argv)
