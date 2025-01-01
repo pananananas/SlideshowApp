@@ -2,9 +2,10 @@
 
 ## TODO:
 
-- [ ] Ustawienia
-    - [ ] Zmiana tła
-    - [ ] Podgląd następnego slajdu
-    - [ ] Prędkość przewijania
+- [x] Ustawienia
+    - [x] Prędkość przewijania
+- [x] Drag and drop
 - [ ] Zapis ostatnio otwartych folderów
-- [ ] Drag and drop
+- [ ] Zapis ostatnio otwartych plików
+- [ ] lista plików podczas wyświetlania
+- [ ] animacje przejścia

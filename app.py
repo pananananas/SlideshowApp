@@ -1,11 +1,11 @@
-from PySide6.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout, 
-                              QWidget, QFileDialog, QPushButton, QDialog, 
-                              QColorDialog, QHBoxLayout, QSpinBox, QFormLayout)
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtGui import QPixmap, QKeyEvent, QKeySequence, QShortcut
+from PySide6.QtCore import QTimer, Qt, QUrl, QSysInfo
 from PySide6.QtMultimediaWidgets import QVideoWidget
-from PySide6.QtGui import QPixmap, QKeyEvent, QKeySequence, QShortcut
-from PySide6.QtCore import QTimer, Qt, QUrl, QSysInfo, QMimeData
-from PySide6.QtGui import QPixmap, QKeyEvent, QKeySequence, QShortcut
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QLabel, QVBoxLayout, 
+    QWidget, QFileDialog, QPushButton, QDialog, 
+    QHBoxLayout, QSpinBox, QFormLayout)
 from PIL.ImageQt import ImageQt
 from PIL import Image, ExifTags
 from pathlib import Path
@@ -17,7 +17,7 @@ class SlideshowApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Slideshow")
-        self.resize(800, 600)
+        self.resize(1200, 800)
 
         # Set black background
         self.setStyleSheet("background-color: black;")
